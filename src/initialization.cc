@@ -70,7 +70,7 @@ static void check_vulkan_extension_support(uint32_t num_req_ext,
 }
 
 static void check_vulkan_validation_layer_support(uint32_t num_req_layers,
-                                        const char* req_layers[]) {
+                                                  const char* req_layers[]) {
     uint32_t num_layers, j;
     vkEnumerateInstanceLayerProperties(&num_layers, nullptr);
     VkLayerProperties* layers = new VkLayerProperties[num_layers];
@@ -116,9 +116,8 @@ static const char** get_vulkan_required_extensions(uint32_t* num_required_extens
     return extensions;
 }
 
-static VkInstance create_vulkan_instance() {
-    // set up creation of a vulkan instance
-    VkInstance instance = nullptr;
+static void create_vulkan_instance() {
+    // set up creation of the vulkan instance
     VkApplicationInfo app_info{};
     VkInstanceCreateInfo create_info{};
     VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
@@ -155,42 +154,37 @@ static VkInstance create_vulkan_instance() {
         create_info.ppEnabledLayerNames  = nullptr;
     }
 
-    if (vkCreateInstance(&create_info, nullptr, &instance) != VK_SUCCESS)
+    if (vkCreateInstance(&create_info, nullptr, &VulkanInterface::instance) != VK_SUCCESS)
         throw std::runtime_error("\nFailed to create vulkan instance.\n");
-    return instance;
 }
 
-static VkDebugUtilsMessengerEXT create_debug_messenger(VkInstance instance) {
+static void create_debug_messenger() {
     if (VULKAN_VALIDATION_LAYER) {
         VkDebugUtilsMessengerCreateInfoEXT create_info{};
-        VkDebugUtilsMessengerEXT debug_messenger;
         populate_debug_messenger_create_info(&create_info);
         // create debug messenger
-        auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT)
+                vkGetInstanceProcAddr(VulkanInterface::instance, "vkCreateDebugUtilsMessengerEXT");
         if (func == nullptr)
-            throw std::runtime_error("(Vulkan) Failed to set up debug messenger!");
-        func(instance, &create_info, nullptr, &debug_messenger);
-        return debug_messenger;
+            throw std::runtime_error("Failed to set up debug messenger!");
+        func(VulkanInterface::instance, &create_info, nullptr, &VulkanInterface::debug_messenger);
     }
-    return nullptr;
 }
 
-static VkPhysicalDevice pick_vulkan_physical_device(
-        VkInstance instance, bool print_info = PRINT_ADDITIONAL_INFO) {
-    VkPhysicalDevice physical_device;
+static void pick_vulkan_physical_device(bool print_info = PRINT_ADDITIONAL_INFO) {
     uint32_t num_devices = 0, i;
-    vkEnumeratePhysicalDevices(instance, &num_devices, nullptr);
+    vkEnumeratePhysicalDevices(VulkanInterface::instance, &num_devices, nullptr);
     if (!num_devices)
         throw std::runtime_error("No GPUs with vulkan support found.");
     VkPhysicalDevice* devices = new VkPhysicalDevice[num_devices];
-    vkEnumeratePhysicalDevices(instance, &num_devices, devices);
+    vkEnumeratePhysicalDevices(VulkanInterface::instance, &num_devices, devices);
     // we currenty only use a single device
     i = num_devices;
     while(check_vulkan_suitable_device(devices[--i]) == false) {
         if (i == 0)
             throw std::runtime_error("No suitable GPUs for this application.");
     }
-    physical_device = devices[i];
+    VulkanInterface::physical_device = devices[i];
 
     if (print_info) {
         VkPhysicalDeviceProperties properties;
@@ -203,7 +197,6 @@ static VkPhysicalDevice pick_vulkan_physical_device(
     }
 
     delete[] devices;
-    return physical_device;
 }
 
 void init_window(GLFWwindow** wnd, int width, int height) {
@@ -219,10 +212,8 @@ void init_window(GLFWwindow** wnd, int width, int height) {
     glfwSetWindowPos(*wnd, 0, top);
 }
 
-void init_vulkan(VkInstance* instance,
-                 VkDebugUtilsMessengerEXT* debug_messenger,
-                 VkPhysicalDevice* physical_device) {
-    *instance = create_vulkan_instance();
-    *debug_messenger = create_debug_messenger(*instance);
-    *physical_device = pick_vulkan_physical_device(*instance);
+void init_vulkan() {
+    create_vulkan_instance();
+    create_debug_messenger();
+    pick_vulkan_physical_device();
 }

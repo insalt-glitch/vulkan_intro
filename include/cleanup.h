@@ -17,11 +17,10 @@ static void DestroyDebugUtilsMessengerEXT(
     }
 }
 
-void cleanup(GLFWwindow* wnd, VkInstance instance,
-             VkDebugUtilsMessengerEXT debug_messenger) {
+void cleanup(GLFWwindow* wnd) {
     if (VULKAN_VALIDATION_LAYER)
-        DestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
-    vkDestroyInstance(instance, nullptr);
+        DestroyDebugUtilsMessengerEXT(VulkanInterface::instance, VulkanInterface::debug_messenger, nullptr);
+    vkDestroyInstance(VulkanInterface::instance, nullptr);
     glfwDestroyWindow(wnd);
     glfwTerminate();
 }
