@@ -1,2 +1,2 @@
 # vulkan_intro
-Trying out the vulkan api
+I'm trying out the vulkan-API, following the [vulkan-tutorial page](vulkan-tutorial.com)!
