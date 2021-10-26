@@ -1,9 +1,5 @@
 #include "../include/initilization.h"
 
-#include <stdio.h>
-#include <cstring>
-#include <stdexcept>
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -24,8 +20,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     }
     if(messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
         fprintf(stdout, "(VALIDATION/VIOLATION) ");
-    }
-    if(messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+    } else if (messageType == VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
         fprintf(stdout, "(PERFORMANCE) ");
     }
     fprintf(stdout, "\n");
@@ -33,8 +28,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
     return VK_FALSE;
 }
 
-static void populate_debug_messenger_create_info(
-        VkDebugUtilsMessengerCreateInfoEXT* create_info) {
+static void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT* create_info) {
     create_info->sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     create_info->messageSeverity = //VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
                                    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
@@ -47,13 +41,13 @@ static void populate_debug_messenger_create_info(
 
 static void check_vulkan_extension_support(uint32_t num_req_ext,
                                            const char** req_ext,
-                                           bool print_info = false) {
-    uint32_t num_extensions = 0;
+                                           bool print_info = PRINT_ADDITIONAL_INFO) {
+    uint32_t num_extensions = 0, i, j;
     vkEnumerateInstanceExtensionProperties(nullptr, &num_extensions, nullptr);
     VkExtensionProperties* extensions = new VkExtensionProperties[num_extensions];
     vkEnumerateInstanceExtensionProperties(nullptr, &num_extensions, extensions);
-    for (uint32_t i = 0; i < num_req_ext; ++i) {
-        uint32_t j = num_extensions;
+    for (i = 0; i < num_req_ext; ++i) {
+        j = num_extensions;
         while (strcmp(req_ext[i], extensions[--j].extensionName)) {
             if (j == 0) {
                 fprintf(stderr, "(Vulkan) Required vulkan extension \"%s\""
@@ -65,9 +59,10 @@ static void check_vulkan_extension_support(uint32_t num_req_ext,
     }
     // optionally print available vulkan extensions
     if (print_info) {
-        fprintf(stdout, "(Vulkan) Available vulkan extensions\n\n");
-        while (num_extensions--) {
-            fprintf(stdout, "(Vulkan) \t%s\n", extensions[num_extensions].extensionName);
+        i = num_extensions;
+        fprintf(stdout, "(Vulkan) Available vulkan extensions\n(Vulkan)\n");
+        while (i--) {
+            fprintf(stdout, "(Vulkan) \t%s\n", extensions[i].extensionName);
         }
         fprintf(stdout, "(Vulkan) \n");
     }
@@ -94,7 +89,17 @@ static void check_vulkan_validation_layer_support(uint32_t num_req_layers,
     delete[] layers;
 }
 
-static const char** vulkan_required_extensions(uint32_t* num_required_extensions) {
+static bool check_vulkan_suitable_device(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceFeatures features;
+    vkGetPhysicalDeviceProperties(device, &properties);
+    vkGetPhysicalDeviceFeatures(device, &features);
+
+    return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+           features.geometryShader;
+}
+
+static const char** get_vulkan_required_extensions(uint32_t* num_required_extensions) {
     uint32_t num_extensions = 0;
     const char** extensions;
     extensions = glfwGetRequiredInstanceExtensions(&num_extensions);
@@ -129,7 +134,7 @@ static VkInstance create_vulkan_instance() {
     app_info.apiVersion          = VK_API_VERSION_1_0;
 
     // fill create-info struct
-    req_extensions = vulkan_required_extensions(&num_req_extension);
+    req_extensions = get_vulkan_required_extensions(&num_req_extension);
     create_info.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pApplicationInfo         = &app_info;
     create_info.enabledExtensionCount    = num_req_extension;
@@ -155,30 +160,50 @@ static VkInstance create_vulkan_instance() {
     return instance;
 }
 
-static VkResult CreateDebugUtilsMessengerEXT(
-        VkInstance instance,
-        const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-        const VkAllocationCallbacks* pAllocator,
-        VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-static VkDebugUtilsMessengerEXT init_debug_messenger(VkInstance* instance) {
+static VkDebugUtilsMessengerEXT create_debug_messenger(VkInstance instance) {
     if (VULKAN_VALIDATION_LAYER) {
         VkDebugUtilsMessengerCreateInfoEXT create_info{};
         VkDebugUtilsMessengerEXT debug_messenger;
         populate_debug_messenger_create_info(&create_info);
-
-        if (CreateDebugUtilsMessengerEXT(*instance, &create_info, nullptr, &debug_messenger) != VK_SUCCESS)
+        // create debug messenger
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func == nullptr)
             throw std::runtime_error("(Vulkan) Failed to set up debug messenger!");
+        func(instance, &create_info, nullptr, &debug_messenger);
         return debug_messenger;
     }
     return nullptr;
+}
+
+static VkPhysicalDevice pick_vulkan_physical_device(
+        VkInstance instance, bool print_info = PRINT_ADDITIONAL_INFO) {
+    VkPhysicalDevice physical_device;
+    uint32_t num_devices = 0, i;
+    vkEnumeratePhysicalDevices(instance, &num_devices, nullptr);
+    if (!num_devices)
+        throw std::runtime_error("No GPUs with vulkan support found.");
+    VkPhysicalDevice* devices = new VkPhysicalDevice[num_devices];
+    vkEnumeratePhysicalDevices(instance, &num_devices, devices);
+    // we currenty only use a single device
+    i = num_devices;
+    while(check_vulkan_suitable_device(devices[--i]) == false) {
+        if (i == 0)
+            throw std::runtime_error("No suitable GPUs for this application.");
+    }
+    physical_device = devices[i];
+
+    if (print_info) {
+        VkPhysicalDeviceProperties properties;
+        fprintf(stdout, "(Vulkan) Available device(s)\n(Vulkan)\n");
+        for (i = 0; i < num_devices; ++i) {
+            vkGetPhysicalDeviceProperties(devices[i], &properties);
+            fprintf(stdout, "(Vulkan) \t%s\n", properties.deviceName);
+        }
+        fprintf(stdout, "(Vulkan)\n");
+    }
+
+    delete[] devices;
+    return physical_device;
 }
 
 void init_window(GLFWwindow** wnd, int width, int height) {
@@ -194,7 +219,10 @@ void init_window(GLFWwindow** wnd, int width, int height) {
     glfwSetWindowPos(*wnd, 0, top);
 }
 
-void init_vulkan(VkInstance* instance, VkDebugUtilsMessengerEXT* debug_messenger) {
+void init_vulkan(VkInstance* instance,
+                 VkDebugUtilsMessengerEXT* debug_messenger,
+                 VkPhysicalDevice* physical_device) {
     *instance = create_vulkan_instance();
-    *debug_messenger = init_debug_messenger(instance);
+    *debug_messenger = create_debug_messenger(*instance);
+    *physical_device = pick_vulkan_physical_device(*instance);
 }

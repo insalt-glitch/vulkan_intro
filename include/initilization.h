@@ -1,14 +1,20 @@
-#ifndef INITIALIZATION_H_
-#define INITIALIZATION_H_
+#ifndef INCLUDE_INITIALIZATION_H_
+#define INCLUDE_INITIALIZATION_H_
+
+#include <stdio.h>
+#include <cstring>
+#include <stdexcept>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
-#define VULKAN_VALIDATION_LAYER true
+#include "constants.h"
 
 void init_window(GLFWwindow** wnd, int width, int height);
 
-void init_vulkan(VkInstance* instance, VkDebugUtilsMessengerEXT* debug_manager);
+void init_vulkan(VkInstance* instance,
+                 VkDebugUtilsMessengerEXT* debug_manager,
+                 VkPhysicalDevice* physical_device);
 
-#endif  // INITIALIZATION_H_
+#endif  // INCLUDE_INITIALIZATION_H_

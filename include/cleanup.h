@@ -1,9 +1,9 @@
-#ifndef CLEANUP_H_
-#define CLEANUP_H_
+#ifndef INCLUDE_CLEANUP_H_
+#define INCLUDE_CLEANUP_H_
 
 #include <GLFW/glfw3.h>
 
-#define VULKAN_VALIDATION_LAYER true
+#include "constants.h"
 
 static void DestroyDebugUtilsMessengerEXT(
          VkInstance instance,
@@ -26,4 +26,4 @@ void cleanup(GLFWwindow* wnd, VkInstance instance,
     glfwTerminate();
 }
 
-#endif // CLEANUP_H_
+#endif // INCLUDE_CLEANUP_H_
