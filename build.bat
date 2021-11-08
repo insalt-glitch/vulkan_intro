@@ -17,4 +17,4 @@ set COMPILE_FLAGS=-Wall -Wpedantic -Wextra -Wbad-function-cast -Wcast-align^
 set LINK_FLAGS=%LINK_LIBS%
 
 :: Build the executable
-call clang++ -O0 %COMPILE_FLAGS% %LINK_FLAGS% src/*.cc -o vulkan_intro.exe
+call clang++ -O0 %COMPILE_FLAGS% %LINK_FLAGS% src/main.cc -o vulkan_intro.exe

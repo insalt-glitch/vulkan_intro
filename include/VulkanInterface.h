@@ -9,13 +9,16 @@ private:
         uint32_t idx, valid;
     };
 public:
+    // Note that when adding new queue families, the correponding check in
+    // fill_queue_family_idxs() in initialization.h has to be added.
     VulkanIndex graphics;
+    bool all_found() { return graphics.valid; }
 };
 
 struct VulkanInterface {
-    static VkInstance instance;
-    static VkDebugUtilsMessengerEXT debug_messenger;
-    static VkPhysicalDevice physical_device;
+    static VkInstance                instance;
+    static VkDebugUtilsMessengerEXT  debug_messenger;
+    static VkPhysicalDevice          physical_device;
     static VulkanQueueFamilyIndicies q_family_idx;
 };
 
